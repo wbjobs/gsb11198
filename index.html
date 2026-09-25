@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Web Worker 任务分发与异常恢复演示</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 16px;
+    background: #11161f; color: #ecf0f1;
+    font-family: -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  }
+  h1 { font-size: 18px; margin: 0 0 12px; }
+  .panel {
+    background: #1e2430; border: 1px solid #2c3444;
+    border-radius: 8px; padding: 12px; margin-bottom: 12px;
+  }
+  .controls { display: flex; flex-wrap: wrap; gap: 16px; }
+  fieldset {
+    border: 1px solid #3a4456; border-radius: 6px;
+    margin: 0; padding: 8px 12px; font-size: 13px;
+  }
+  legend { color: #8fa3bf; padding: 0 4px; }
+  label { margin-right: 10px; white-space: nowrap; cursor: pointer; }
+  button {
+    background: #3498db; color: #fff; border: 0; border-radius: 4px;
+    padding: 5px 12px; margin: 2px 4px 2px 0; cursor: pointer; font-size: 13px;
+  }
+  button:hover { background: #2f89c5; }
+  button.warn { background: #e67e22; }
+  button.warn:hover { background: #cf701d; }
+  button.danger { background: #c0392b; }
+  button.danger:hover { background: #a93226; }
+  button.ok { background: #27ae60; }
+  button.ok:hover { background: #229954; }
+  input[type=number] {
+    width: 90px; background: #11161f; color: #ecf0f1;
+    border: 1px solid #3a4456; border-radius: 4px; padding: 4px 6px;
+  }
+  canvas { background: #1e2430; border-radius: 6px; display: block; width: 100%; }
+  .grid { display: grid; grid-template-columns: 220px 1fr 1.4fr; gap: 12px; }
+  #stats, #perf, #log { font-size: 12px; line-height: 1.7; max-height: 240px; overflow-y: auto; }
+  #log div, #perf div { border-bottom: 1px solid #262e3d; padding: 1px 0; }
+  #log div:first-child, #perf div:first-child { color: #85c1e9; }
+  h3 { margin: 0 0 8px; font-size: 13px; color: #8fa3bf; }
+</style>
+</head>
+<body>
+<h1>Web Worker 任务分发 · 超时重试 · 崩溃恢复 · 主线程降级</h1>
+
+<div class="panel controls">
+  <fieldset>
+    <legend>任务提交</legend>
+    数量 <input id="taskCount" type="number" min="1" max="200">
+    每任务迭代数 <input id="taskSize" type="number" min="1000" step="1000000">
+    <button id="submitTasks">提交任务</button>
+    <label><input id="verify" type="checkbox"> 完成后校验结果一致性</label>
+  </fieldset>
+
+  <fieldset>
+    <legend>混沌注入（持续生效）</legend>
+    <label><input id="chaos-noWorker" type="checkbox"> 不支持 Worker</label>
+    <label><input id="chaos-createFail" type="checkbox"> 创建失败</label>
+    <label><input id="chaos-dropMessage" type="checkbox"> 消息丢失(50%)</label>
+    <label><input id="chaos-reorder" type="checkbox"> 消息乱序</label>
+    <label><input id="chaos-randomCrash" type="checkbox"> 随机崩溃</label>
+    <label><input id="chaos-oom" type="checkbox"> 随机内存溢出</label>
+  </fieldset>
+
+  <fieldset>
+    <legend>手动异常操作</legend>
+    <button id="crashWorker" class="danger">卡死一个 Worker</button>
+    <button id="oomWorker" class="danger">注入内存溢出</button>
+    <button id="terminateWorker" class="warn">主线程终止 Worker</button>
+    <button id="reviveWorkers" class="ok">恢复死亡 Worker</button>
+  </fieldset>
+</div>
+
+<div class="panel">
+  <canvas id="stage" width="980" height="360"></canvas>
+</div>
+
+<div class="grid">
+  <div class="panel"><h3>统计</h3><div id="stats"></div></div>
+  <div class="panel"><h3>PerformanceObserver</h3><div id="perf"></div></div>
+  <div class="panel"><h3>日志</h3><div id="log"></div></div>
+</div>
+
+<script src="main.js"></script>
+</body>
+</html>
