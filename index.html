@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Worker 任务分发与异常恢复演示</title>
+    <link rel="stylesheet" href="./src/styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="hero">
+        <div>
+          <p class="eyebrow">Web Worker + Canvas + PerformanceObserver</p>
+          <h1>Worker 异常恢复与一致性降级演示</h1>
+          <p class="subtitle">只分发简单计算任务，并覆盖不支持、创建失败、超时终止、乱序、崩溃和模拟内存溢出。</p>
+        </div>
+        <div class="hero-actions">
+          <button id="selectAllFaults" type="button" class="button secondary">全选故障</button>
+          <button id="resetButton" type="button" class="button secondary">重置</button>
+          <button id="runButton" type="button" class="button primary">开始演示</button>
+        </div>
+      </header>
+
+      <section class="panel fault-panel" aria-labelledby="faultTitle">
+        <div class="section-heading">
+          <h2 id="faultTitle">故障注入</h2>
+          <p>可同时选择多项。每个故障任务最多重试一次，随后自动切到主线程分片备用方案。</p>
+        </div>
+        <div class="fault-grid">
+          <label><input type="checkbox" id="faultUnsupported" /> <span>Worker 不支持</span></label>
+          <label><input type="checkbox" id="faultCreateFail" /> <span>Worker 创建失败</span></label>
+          <label><input type="checkbox" id="faultTimeout" /> <span>超时并终止</span></label>
+          <label><input type="checkbox" id="faultLost" /> <span>消息丢失</span></label>
+          <label><input type="checkbox" id="faultOrder" /> <span>消息乱序</span></label>
+          <label><input type="checkbox" id="faultCrash" /> <span>Worker 崩溃</span></label>
+          <label><input type="checkbox" id="faultOom" /> <span>内存溢出</span></label>
+        </div>
+      </section>
+
+      <section class="metrics" aria-live="polite">
+        <article class="metric-card"><span id="metricQueued">0</span><small>等待中</small></article>
+        <article class="metric-card"><span id="metricRunning">0</span><small>Worker 执行</small></article>
+        <article class="metric-card"><span id="metricRetry">0</span><small>重试</small></article>
+        <article class="metric-card"><span id="metricFallback">0</span><small>主线程降级</small></article>
+        <article class="metric-card"><span id="metricDone">0</span><small>已完成</small></article>
+        <article class="metric-card"><span id="metricMismatch">0</span><small>结果不一致</small></article>
+      </section>
+
+      <section class="grid-two">
+        <article class="panel">
+          <div class="section-heading">
+            <h2>实时状态</h2>
+            <p id="phaseText">点击“开始演示”。</p>
+          </div>
+          <canvas id="statusCanvas" width="760" height="300" aria-label="Worker 和任务状态可视化"></canvas>
+        </article>
+
+        <article class="panel">
+          <div class="section-heading">
+            <h2>Worker 池</h2>
+            <p id="environmentText">正在检测 Worker 能力。</p>
+          </div>
+          <div id="workerList" class="worker-list"></div>
+          <div class="event-log-wrap">
+            <h3>事件日志</h3>
+            <ol id="eventLog" class="event-log"></ol>
+          </div>
+        </article>
+      </section>
+
+      <section class="grid-two performance-grid">
+        <article class="panel performance-panel">
+          <h2>主线程性能</h2>
+          <p><strong id="longTaskCount">0</strong> 次 long task</p>
+          <p>最长阻塞 <strong id="longTaskMax">0</strong> ms；降级计算使用分片，避免持续占用主线程。</p>
+          <canvas id="performanceCanvas" width="360" height="120"></canvas>
+        </article>
+        <article class="panel performance-panel">
+          <h2>一致性校验</h2>
+          <p id="consistencyText">等待运行。</p>
+          <div class="formula">f(n) = ((n × 7 + 13) mod 97) × n</div>
+        </article>
+      </section>
+
+      <section class="panel">
+        <div class="section-heading">
+          <h2>任务结果</h2>
+          <p>结果按任务 ID 汇总，不按返回顺序覆盖，因此乱序不会丢结果。</p>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>输入</th>
+                <th>状态</th>
+                <th>执行方式</th>
+                <th>到达序号</th>
+                <th>耗时</th>
+                <th>结果</th>
+                <th>校验</th>
+              </tr>
+            </thead>
+            <tbody id="resultBody"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <script src="./src/compute.js"></script>
+    <script type="module" src="./src/app.js"></script>
+  </body>
+</html>
